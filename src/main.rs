@@ -38,7 +38,7 @@ fn main_parse(writer: &mut std::io::BufWriter<std::fs::File>) {
 fn lib_parse(project_name: String, writer: &mut std::io::BufWriter<std::fs::File>) {
     let contents = std::fs::read_to_string("src/lib.rs").unwrap_or_else(|_| "".to_string());
     writer
-        .write_all(format!("pub mod {} {{\n", project_name).as_bytes())
+        .write_all(format!("pub mod {} {{\n", project_name.replace('-', "_")).as_bytes())
         .unwrap();
     for line in contents.lines() {
         if line.contains("pub mod") {
@@ -56,7 +56,12 @@ fn lib_parse(project_name: String, writer: &mut std::io::BufWriter<std::fs::File
                     2,
                 );
             } else {
-                mod_parse(&format!("src/{}/", mod_name), writer, 2);
+                mod_parse(
+                    &format!("src/{}/", mod_name),
+                    project_name.clone(),
+                    writer,
+                    2,
+                );
             }
             writer.write_all("    }\n".as_bytes()).unwrap();
         } else {
@@ -69,7 +74,12 @@ fn lib_parse(project_name: String, writer: &mut std::io::BufWriter<std::fs::File
 }
 
 /// parse mod.rs file
-fn mod_parse(path: &str, writer: &mut std::io::BufWriter<std::fs::File>, indent: usize) {
+fn mod_parse(
+    path: &str,
+    project_name: String,
+    writer: &mut std::io::BufWriter<std::fs::File>,
+    indent: usize,
+) {
     let contents =
         std::fs::read_to_string(format!("{}mod.rs", path)).unwrap_or_else(|_| "".to_string());
     for line in contents.lines() {
@@ -87,12 +97,17 @@ fn mod_parse(path: &str, writer: &mut std::io::BufWriter<std::fs::File>, indent:
             if std::fs::metadata(&format!("{}{}.rs", path, mod_name)).is_ok() {
                 parse(
                     &format!("{}{}.rs", path, mod_name),
-                    "".to_string(),
+                    project_name.clone(),
                     writer,
                     indent + 1,
                 );
             } else {
-                mod_parse(&format!("{}{}/", path, mod_name), writer, indent + 1);
+                mod_parse(
+                    &format!("{}{}/", path, mod_name),
+                    project_name.clone(),
+                    writer,
+                    indent + 1,
+                );
             }
 
             for _ in 0..indent {
@@ -122,7 +137,10 @@ fn parse(
             for _ in 0..indent {
                 writer.write_all("    ".as_bytes()).unwrap();
             }
-            let line = line.replace("use crate::", &format!("use crate::{}::", project_name));
+            let line = line.replace(
+                "use crate::",
+                &format!("use crate::{}::", project_name.replace('-', "_")),
+            );
             writer.write_all(line.as_bytes()).unwrap();
         } else {
             for _ in 0..indent {
